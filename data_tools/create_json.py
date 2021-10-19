@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 import xml.etree.ElementTree as ET
 import imageio
+import pandas as pd
 
 def add_images(h5_file, args):
     fns = []
@@ -110,10 +111,10 @@ def create_image_data(args):
         json.dump(data, f)
 
 def create_objects(args):
-    json_path = os.path.join(args.json_dir, "objects.json")
+    json_path = os.path.join(args.json_dir, "objects_id-in-img.json")
     data = []
     file_list = os.listdir(args.annotation_dir)
-    object_id = 0
+
     for basename in file_list:
         annotation_filename = os.path.join(args.annotation_dir, basename)
         tree = ET.parse(annotation_filename)
@@ -122,6 +123,7 @@ def create_objects(args):
         image_id = int(image_file.split('.')[0])
         image_url = ""
         objects = []
+        object_id = 0
         for i_object, obj in enumerate(objects_data):
             bbox = obj.find('bndbox')
             x1 = float(bbox.find('xmin').text)
@@ -132,10 +134,10 @@ def create_objects(args):
                 "object_id": object_id,
                 "merged_object_ids": [],
                 "names": [obj.find('name').text],
-                "h": y2 - y1,
-                "w": x2 - x1,
-                "x": x1,
-                "y": y1
+                "h": int(y2 - y1),
+                "w": int(x2 - x1),
+                "x": int(x1),
+                "y": int(y1)
             }
             object_id += 1
             objects.append(object)
@@ -147,13 +149,59 @@ def create_objects(args):
     with open(json_path, "w") as f:
         json.dump(data, f)
 
+def create_relationship(args):
+    data = pd.read_csv(args.csv_path)
+    count = data["object"].count()
+    relationships = []
+    objects_id_in_img_data = json.load(open(args.objects_id_in_img_json))
+    objects_data = json.load(open(args.objects_json))
+    objects = {}
+
+    for i in range(len(objects_data)):
+        image_id = objects_data[i]["image_id"]
+        objects[image_id] = {}
+        for j in range(len(objects_data[i]["objects"])):
+            objects[image_id][objects_id_in_img_data[i]["objects"][j]["object_id"]] = objects_data[i]["objects"][j]
+            objects[image_id][objects_id_in_img_data[i]["objects"][j]["object_id"]]["name"] = objects_data[i]["objects"][j]["names"][0]
+            objects[image_id][objects_id_in_img_data[i]["objects"][j]["object_id"]].pop("names")
+
+
+    image_id = data["image_id"][0]
+    relationship_id = 0
+    for i in range(count):
+        if not np.isnan(data["image_id"][i]):
+            image_id = int(data["image_id"][i])
+            relationships.append({
+                "relationships": [],
+                "image_id": image_id
+            })
+        object_id = int(data["object"][i])
+        relation = data["relationship"][i]
+        subject_id = int(data["subject"][i])
+        object = objects[image_id][object_id]
+        subject = objects[image_id][subject_id]
+        relationships[-1]["relationships"].append({
+            "predicate": relation,
+            "object": object,
+            "relationship_id": relationship_id,
+            "subject": subject
+        })
+        relationship_id += 1
+    with open(args.rel_json_path, "w") as f:
+        json.dump(relationships, f)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/JPEGImages-trainval')
     parser.add_argument('--annotation_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/Annotations')
     parser.add_argument('--image_size', default=800, type=int)
     parser.add_argument('--json_dir', default='DIOR/')
+    parser.add_argument('--csv_path', default="/Users/lizeng/Desktop/relationship.csv")
+    parser.add_argument('--objects_id_in_img_json', default="DIOR/objects_id-in-img.json")
+    parser.add_argument('--objects_json', default="DIOR/objects.json")
+    parser.add_argument('--rel_json_path', default="DIOR/relationships.json")
 
     args = parser.parse_args()
     # create_image_data(args)
-    create_objects(args)
+    # create_objects(args)
+    create_relationship(args)
