@@ -281,9 +281,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--distance_rel_path', default="DIOR/distance_relationships_original.json")
-    parser.add_argument('--direction_rel_path', default="DIOR/direction_relationships_original.json")
-    parser.add_argument('--topo_rel_path', default="DIOR/topo_relationships_original.json")
+    parser.add_argument('--distance_rel_path', default="DIOR/original_json/distance_relationships_original.json")
+    parser.add_argument('--direction_rel_path', default="DIOR/original_json/direction_relationships_original.json")
+    parser.add_argument('--topo_rel_path', default="DIOR/original_json/topo_relationships_original.json")
     parser.add_argument('--objects_path', default="DIOR/objects_id-in-img.json")
 
 
