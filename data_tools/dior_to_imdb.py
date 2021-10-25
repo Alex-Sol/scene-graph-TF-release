@@ -2,25 +2,29 @@
 
 import argparse, os, json, string
 from queue import Queue
-# from asyncio import Queue
 from threading import Thread, Lock
 import cv2
 import h5py
 import numpy as np
 import imageio
 
-def add_images(h5_file, args):
+def add_images(im_data, h5_file, args):
     fns = []
     ids = []
     idx = []
-    file_list = os.listdir(args.image_dir)
+    for i, img in enumerate(im_data):
+        basename = format(img['image_id'], '05d') + '.jpg'
 
-    for i, basename in enumerate(file_list):
+        filename = os.path.join(args.image_dir, "JPEGImages-trainval", basename)
 
-        filename = os.path.join(args.image_dir, basename)
         if os.path.exists(filename):
             fns.append(filename)
-            ids.append(basename.split('.')[0])
+            ids.append(img['image_id'])
+            idx.append(i)
+        else:
+            filename = os.path.join(args.image_dir, "JPEGImages-test", basename)
+            fns.append(filename)
+            ids.append(img['image_id'])
             idx.append(i)
 
     ids = np.array(ids, dtype=np.int32)
@@ -85,20 +89,22 @@ def add_images(h5_file, args):
 
 
 def main(args):
+    im_metadata = json.load(open(args.metadata_input))
     h5_fn = 'imdb_' + str(args.image_size) + '.h5'
     # write the h5 file
     h5_file = os.path.join(args.imh5_dir, h5_fn)
     f = h5py.File(h5_file, 'w')
     # load images
-    im_fns = add_images(f, args)
+    im_fns = add_images(im_metadata, f, args)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/JPEGImages-trainval')
+    parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR')
     parser.add_argument('--image_size', default=800, type=int)
-    parser.add_argument('--imh5_dir', default='.')
+    parser.add_argument('--imh5_dir', default='DIOR')
     parser.add_argument('--num_workers', default=20, type=int)
+    parser.add_argument('--metadata_input', default='DIOR/image_data.json', type=str)
 
     args = parser.parse_args()
     main(args)
