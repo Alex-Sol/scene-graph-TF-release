@@ -89,35 +89,60 @@ def add_images(h5_file, args):
 def create_image_data(args):
     json_path = os.path.join(args.json_dir, "image_data.json")
     data = []
-    file_list = os.listdir(args.image_dir)
+    image_dir = os.path.join(args.image_dir, "JPEGImages-trainval")
+    file_list = os.listdir(image_dir)
     i = 0
     for basename in file_list:
-        filename = os.path.join(args.image_dir, basename)
+        filename = os.path.join(image_dir, basename)
         img = imageio.imread(filename)
         if i % 1000 == 0:
             print(i)
         i += 1
         # if img.shape[0] != 800 or img.shape[1] != 800:
         #     print(basename)
-        if abs(img.shape[0] - 800) >= 50 or abs(img.shape[1] - 800) >= 50:
-            print("image_name: ")
-            print(basename)
+        # if abs(img.shape[0] - 800) >= 50 or abs(img.shape[1] - 800) >= 50:
+        #     print("image_name: ")
+        #     print(basename)
         data.append({
             "width": img.shape[1],
             "height": img.shape[0],
             "image_id": int(basename.split(".")[0]),
             "url": "",
             "coco_id": None,
-            "flickr_id": None
+            "flickr_id": None,
+            "trainval": "trainval"
         })
-    # with open(json_path, "w") as f:
-    #     json.dump(data, f)
+
+    image_dir = os.path.join(args.image_dir, "JPEGImages-test")
+    file_list = os.listdir(image_dir)
+    for basename in file_list:
+        filename = os.path.join(image_dir, basename)
+        img = imageio.imread(filename)
+        if i % 1000 == 0:
+            print(i)
+        i += 1
+        # if img.shape[0] != 800 or img.shape[1] != 800:
+        #     print(basename)
+        # if abs(img.shape[0] - 800) >= 50 or abs(img.shape[1] - 800) >= 50:
+        #     print("image_name: ")
+        #     print(basename)
+        data.append({
+            "width": img.shape[1],
+            "height": img.shape[0],
+            "image_id": int(basename.split(".")[0]),
+            "url": "",
+            "coco_id": None,
+            "flickr_id": None,
+            "trainval": "test"
+        })
+    with open(json_path, "w") as f:
+        json.dump(data, f, indent=4)
 
 def create_objects(args):
-    json_path = os.path.join(args.json_dir, "objects_id-in-img.json")
+    json_path = os.path.join(args.json_dir, "objects.json")
     data = []
     file_list = os.listdir(args.annotation_dir)
-
+    object_id = 0
     for basename in file_list:
         annotation_filename = os.path.join(args.annotation_dir, basename)
         tree = ET.parse(annotation_filename)
@@ -126,7 +151,7 @@ def create_objects(args):
         image_id = int(image_file.split('.')[0])
         image_url = ""
         objects = []
-        object_id = 0
+
         for i_object, obj in enumerate(objects_data):
             bbox = obj.find('bndbox')
             x1 = float(bbox.find('xmin').text)
@@ -152,7 +177,7 @@ def create_objects(args):
     with open(json_path, "w") as f:
         json.dump(data, f, indent=4)
 
-def create_relationship(args):
+def create_relationship_from_csv(args):
     data = pd.read_csv(args.csv_path)
     count = data["object"].count()
     relationships = []
@@ -193,9 +218,19 @@ def create_relationship(args):
     with open(args.rel_json_path, "w") as f:
         json.dump(relationships, f, indent=4)
 
+def create_relationship_from_original(args):
+    distance_relationships_path = os.path.join(args.original_json_path, "distance_relationships_original.json")
+    direction_relationships_path = os.path.join(args.original_json_path, "direction_relationships_original.json")
+    topo_relationships_path = os.path.join(args.original_json_path, "topo_relationships_original.json")
+    distance_relationships = json.load(open(distance_relationships_path))
+    direction_relationships = json.load(open(direction_relationships_path))
+    topo_relationships = json.load(open(topo_relationships_path))
+    image_data = json.load(open(args.image_data_path))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/JPEGImages-trainval')
+    parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR')
     parser.add_argument('--annotation_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/Annotations')
     parser.add_argument('--image_size', default=800, type=int)
     parser.add_argument('--json_dir', default='DIOR/')
@@ -203,8 +238,11 @@ if __name__ == '__main__':
     parser.add_argument('--objects_id_in_img_json', default="DIOR/objects_id-in-img.json")
     parser.add_argument('--objects_json', default="DIOR/objects.json")
     parser.add_argument('--rel_json_path', default="DIOR/relationships.json")
+    parser.add_argument('--original_json_path', default="DIOR/original_json")
+    parser.add_argument('--image_data_path', default="DIOR/image_data.json")
 
     args = parser.parse_args()
-    # create_image_data(args)
+    create_image_data(args)
     create_objects(args)
-    # create_relationship(args)
+    # create_relationship_from_csv(args)
+    # create_relationship_from_original(args)
