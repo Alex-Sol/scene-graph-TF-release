@@ -97,7 +97,10 @@ def create_image_data(args):
         if i % 1000 == 0:
             print(i)
         i += 1
-        if img.shape[0] != 800 or img.shape[1] != 800:
+        # if img.shape[0] != 800 or img.shape[1] != 800:
+        #     print(basename)
+        if abs(img.shape[0] - 800) >= 50 or abs(img.shape[1] - 800) >= 50:
+            print("image_name: ")
             print(basename)
         data.append({
             "width": img.shape[1],
@@ -107,8 +110,8 @@ def create_image_data(args):
             "coco_id": None,
             "flickr_id": None
         })
-    with open(json_path, "w") as f:
-        json.dump(data, f)
+    # with open(json_path, "w") as f:
+    #     json.dump(data, f)
 
 def create_objects(args):
     json_path = os.path.join(args.json_dir, "objects_id-in-img.json")
@@ -147,7 +150,7 @@ def create_objects(args):
             "objects": objects
         })
     with open(json_path, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=4)
 
 def create_relationship(args):
     data = pd.read_csv(args.csv_path)
@@ -188,7 +191,7 @@ def create_relationship(args):
         })
         relationship_id += 1
     with open(args.rel_json_path, "w") as f:
-        json.dump(relationships, f)
+        json.dump(relationships, f, indent=4)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -203,5 +206,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # create_image_data(args)
-    # create_objects(args)
-    create_relationship(args)
+    create_objects(args)
+    # create_relationship(args)
