@@ -226,6 +226,70 @@ def create_relationship_from_original(args):
     direction_relationships = json.load(open(direction_relationships_path))
     topo_relationships = json.load(open(topo_relationships_path))
     image_data = json.load(open(args.image_data_path))
+    objects_data = json.load(open(args.objects_json))
+    objects = {}
+    for img in objects_data:
+        objects[img['image_id']] = img['objects']
+    relationships = []
+    relationship_id = 0
+    for img in image_data:
+        image_id = img['image_id']
+        distance_relationship = []
+        direction_relationship = []
+        topo_relationship = []
+        image_id_str = str(image_id)
+        if (image_id_str in distance_relationships.keys()):
+            distance_relationship = distance_relationships[image_id_str]
+        if (image_id_str in direction_relationships.keys()):
+            direction_relationship = direction_relationships[image_id_str]
+        if (image_id_str in topo_relationships.keys()):
+            topo_relationship = topo_relationships[image_id_str]
+        if (len(distance_relationship) + len(direction_relationship) + len(topo_relationship) > 0):
+            relationships.append({
+                'relationships': [],
+                'image_id': image_id
+            })
+            for rel in distance_relationship:
+                rel['relationship_id'] = relationship_id
+                relationship_id += 1
+                object_id = rel['object']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['object']['object_id'] = object_id
+                object_id = rel['subject']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['subject']['object_id'] = object_id
+                relationships[-1]['relationships'].append(rel)
+
+            for rel in direction_relationship:
+                rel['relationship_id'] = relationship_id
+                relationship_id += 1
+                object_id = rel['object']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['object']['object_id'] = object_id
+                object_id = rel['subject']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['subject']['object_id'] = object_id
+                relationships[-1]['relationships'].append(rel)
+
+            for rel in topo_relationship:
+                rel['relationship_id'] = relationship_id
+                relationship_id += 1
+                object_id = rel['object']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['object']['object_id'] = object_id
+                object_id = rel['subject']['object_id']
+                object_id = objects[image_id][object_id]['object_id']
+                rel['subject']['object_id'] = object_id
+                relationships[-1]['relationships'].append(rel)
+
+    with open(args.rel_json_path, 'w') as f:
+        json.dump(relationships, f, indent=4)
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -242,7 +306,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_data_path', default="DIOR/image_data.json")
 
     args = parser.parse_args()
-    create_image_data(args)
-    create_objects(args)
+    # create_image_data(args)
+    # create_objects(args)
     # create_relationship_from_csv(args)
-    # create_relationship_from_original(args)
+    create_relationship_from_original(args)
