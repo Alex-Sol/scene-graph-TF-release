@@ -18,26 +18,10 @@ import pprint
 A script for generating an hdf5 ROIDB from the VisualGenome dataset
 """
 
-def preprocess_object_labels(data, alias_dict={}):
+def preprocess_object_labels(data):
     for img in data:
         for obj in img['objects']:
             obj['ids'] = [obj['object_id']]
-            names = []
-            for name in obj['names']:
-                label = sentence_preprocess(name)
-                if label in alias_dict:
-                    label = alias_dict[label]
-                names.append(label)
-            obj['names'] = names
-
-
-def preprocess_predicates(data, alias_dict={}):
-    for img in data:
-        for relation in img['relationships']:
-            predicate = sentence_preprocess(relation['predicate'])
-            if predicate in alias_dict:
-                predicate = alias_dict[predicate]
-            relation['predicate'] = predicate
 
 
 def extract_object_token(data, num_tokens, obj_list=[], verbose=True):
@@ -245,26 +229,17 @@ def encode_objects(obj_data, token_to_idx, token_counter, org_h, org_w, im_long_
         im_to_first_obj[i] = obj_counter
         img['id_to_idx'] = {}  # object id to region idx
         for obj in img['objects']:
-           # pick a label for the object
-            max_occur = 0
-            obj_label = None
-            for name in obj['names']:
-                # pick the name that has maximum occurance
-                if name in token_to_idx and token_counter[name] > max_occur:
-                    obj_label = name
-                    max_occur = token_counter[obj_label]
+            obj_label = obj['names'][0]
+            # encode region
+            for size in im_long_sizes:
+                encoded_boxes[size].append(encode_box(obj, org_h[i], org_w[i], size))
 
-            if obj_label is not None:
-                # encode region
-                for size in im_long_sizes:
-                    encoded_boxes[size].append(encode_box(obj, org_h[i], org_w[i], size))
+            encoded_labels.append(token_to_idx[obj_label])
 
-                encoded_labels.append(token_to_idx[obj_label])
+            for obj_id in obj['ids']: # assign same index for merged ids
+                img['id_to_idx'][obj_id] = obj_counter
 
-                for obj_id in obj['ids']: # assign same index for merged ids
-                    img['id_to_idx'][obj_id] = obj_counter
-
-                obj_counter += 1
+            obj_counter += 1
 
 
         if im_to_first_obj[i] == obj_counter:
@@ -429,7 +404,7 @@ def obj_rel_cross_check(obj_data, rel_data, verbose=False):
     num_img = len(obj_data)
     num_correct = 0
     total_rel = 0
-    for i in xrange(num_img):
+    for i in range(num_img):
         assert(obj_data[i]['image_id'] == rel_data[i]['image_id'])
         objs = obj_data[i]['objects']
         rels = rel_data[i]['relationships']
@@ -449,7 +424,7 @@ def obj_rel_cross_check(obj_data, rel_data, verbose=False):
 
 def sync_objects(obj_data, rel_data):
     num_img = len(obj_data)
-    for i in xrange(num_img):
+    for i in range(num_img):
         assert(obj_data[i]['image_id'] == rel_data[i]['image_id'])
         objs = obj_data[i]['objects']
         rels = rel_data[i]['relationships']
@@ -472,15 +447,6 @@ def main(args):
     print('start')
     pprint.pprint(args)
 
-    obj_alias_dict = {}
-    if len(args.object_alias) > 0:
-        print('using object alias from %s' % (args.object_alias))
-        obj_alias_dict, obj_vocab_list = make_alias_dict(args.object_alias)
-
-    pred_alias_dict = {}
-    if len(args.pred_alias) > 0:
-        print('using predicate alias from %s' % (args.pred_alias))
-        pred_alias_dict, pred_vocab_list = make_alias_dict(args.pred_alias)
 
     obj_list = []
     if len(args.object_list) > 0:
@@ -505,7 +471,8 @@ def main(args):
     print('read image db from %s' % args.imdb)
     imdb = h5.File(args.imdb, 'r')
     num_im, _, _, _ = imdb['images'].shape
-    img_long_sizes = [512, 1024]
+    # img_long_sizes = [512, 1024]
+    img_long_sizes = [400, 800]
     valid_im_idx = imdb['valid_idx'][:] # valid image indices
     img_ids = imdb['image_ids'][:]
     obj_data = filter_by_idx(obj_data, valid_im_idx)
@@ -513,7 +480,7 @@ def main(args):
     img_data = filter_by_idx(img_data, valid_im_idx)
 
     # sanity check
-    for i in xrange(num_im):
+    for i in range(num_im):
         assert(obj_data[i]['image_id'] \
                == rel_data[i]['image_id'] \
                == img_data[i]['image_id'] \
@@ -528,13 +495,13 @@ def main(args):
     print('processing %i images' % num_im)
 
     # sync objects from rel to obj_data
-    sync_objects(obj_data, rel_data)
+    # sync_objects(obj_data, rel_data)
+    #
+    # obj_rel_cross_check(obj_data, rel_data)
 
-    obj_rel_cross_check(obj_data, rel_data)
 
     # preprocess label data
-    preprocess_object_labels(obj_data, alias_dict=obj_alias_dict)
-    preprocess_predicates(rel_data, alias_dict=pred_alias_dict)
+    preprocess_object_labels(obj_data)
 
     heights, widths = imdb['original_heights'][:], imdb['original_widths'][:]
     if args.min_box_area_frac > 0:
@@ -611,22 +578,20 @@ def main(args):
     }
 
     with open(args.json_file, 'w') as f:
-        json.dump(json_struct, f)
+        json.dump(json_struct, f, indent=4)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--imdb', default='DIOR/imdb_1024.h5', type=str)
+    parser.add_argument('--imdb', default='DIOR/imdb_800.h5', type=str)
     parser.add_argument('--object_input', default='DIOR/objects.json', type=str)
     parser.add_argument('--relationship_input', default='DIOR/relationships.json', type=str)
     parser.add_argument('--metadata_input', default='DIOR/image_data.json', type=str)
-    parser.add_argument('--object_alias', default='VG/object_alias.txt', type=str)
-    parser.add_argument('--pred_alias', default='VG/predicate_alias.txt', type=str)
-    parser.add_argument('--object_list', default='VG/object_list.txt', type=str)
-    parser.add_argument('--pred_list', default='VG/predicate_list.txt', type=str)
-    parser.add_argument('--num_objects', default=150, type=int, help="set to 0 to disable filtering")
-    parser.add_argument('--num_predicates', default=50, type=int, help="set to 0 to disable filtering")
-    parser.add_argument('--min_box_area_frac', default=0.002, type=float)
+    parser.add_argument('--object_list', default='DIOR/object_list.txt', type=str)
+    parser.add_argument('--pred_list', default='DIOR/predicate_list.txt', type=str)
+    parser.add_argument('--num_objects', default=20, type=int, help="set to 0 to disable filtering")
+    parser.add_argument('--num_predicates', default=15, type=int, help="set to 0 to disable filtering")
+    parser.add_argument('--min_box_area_frac', default=0.0002, type=float)
     parser.add_argument('--json_file', default='DIOR/dior-dicts.json')
     parser.add_argument('--h5_file', default='DIOR/dior.h5')
     parser.add_argument('--load_frac', default=1, type=float)
