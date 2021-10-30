@@ -280,6 +280,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    #create distance_relationships_original.json direction_relationships_original.json and topo_relationships_original.json
     parser = argparse.ArgumentParser()
     parser.add_argument('--distance_rel_path', default="DIOR/original_json/distance_relationships_original.json")
     parser.add_argument('--direction_rel_path', default="DIOR/original_json/direction_relationships_original.json")

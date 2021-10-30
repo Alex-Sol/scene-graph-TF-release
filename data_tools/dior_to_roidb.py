@@ -582,6 +582,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    #create dior-dicts.json and dior.h5
     parser = argparse.ArgumentParser()
     parser.add_argument('--imdb', default='DIOR/imdb_800.h5', type=str)
     parser.add_argument('--object_input', default='DIOR/objects.json', type=str)

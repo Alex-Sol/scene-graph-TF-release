@@ -177,6 +177,45 @@ def create_objects(args):
     with open(json_path, "w") as f:
         json.dump(data, f, indent=4)
 
+def create_objects_in_img(args):
+    json_path = os.path.join(args.json_dir, "objects_id-in-img.json")
+    data = []
+    file_list = os.listdir(args.annotation_dir)
+
+    for basename in file_list:
+        annotation_filename = os.path.join(args.annotation_dir, basename)
+        tree = ET.parse(annotation_filename)
+        image_file = tree.find('filename').text
+        objects_data = tree.findall('object')
+        image_id = int(image_file.split('.')[0])
+        image_url = ""
+        objects = []
+        object_id = 0
+        for i_object, obj in enumerate(objects_data):
+            bbox = obj.find('bndbox')
+            x1 = float(bbox.find('xmin').text)
+            y1 = float(bbox.find('ymin').text)
+            x2 = float(bbox.find('xmax').text)
+            y2 = float(bbox.find('ymax').text)
+            object = {
+                "object_id": object_id,
+                "merged_object_ids": [],
+                "names": [obj.find('name').text],
+                "h": int(y2 - y1),
+                "w": int(x2 - x1),
+                "x": int(x1),
+                "y": int(y1)
+            }
+            object_id += 1
+            objects.append(object)
+        data.append({
+            "image_id": image_id,
+            "image_url": image_url,
+            "objects": objects
+        })
+    with open(json_path, "w") as f:
+        json.dump(data, f, indent=4)
+
 def create_relationship_from_csv(args):
     data = pd.read_csv(args.csv_path)
     count = data["object"].count()
@@ -297,16 +336,20 @@ if __name__ == '__main__':
     parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR')
     parser.add_argument('--annotation_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR/Annotations')
     parser.add_argument('--image_size', default=800, type=int)
-    parser.add_argument('--json_dir', default='DIOR/')
+    parser.add_argument('--json_dir', default='DIOR/total_json')
     parser.add_argument('--csv_path', default="/Users/lizeng/Desktop/relationship.csv")
-    parser.add_argument('--objects_id_in_img_json', default="DIOR/objects_id-in-img.json")
-    parser.add_argument('--objects_json', default="DIOR/objects.json")
+    parser.add_argument('--objects_id_in_img_json', default="DIOR/total_json/objects_id-in-img.json")
+    parser.add_argument('--objects_json', default="DIOR/total_json/objects.json")
     parser.add_argument('--rel_json_path', default="DIOR/relationships.json")
     parser.add_argument('--original_json_path', default="DIOR/original_json")
-    parser.add_argument('--image_data_path', default="DIOR/image_data.json")
+    parser.add_argument('--image_data_path', default="DIOR/total_json/image_data.json")
+    parser.add_argument('--crete_image_data', type=bool, default=True)
 
     args = parser.parse_args()
-    # create_image_data(args)
-    # create_objects(args)
-    # create_relationship_from_csv(args)
-    create_relationship_from_original(args)
+    if args.crete_image_data:
+        create_image_data(args)
+        create_objects(args)
+        create_objects_in_img(args)
+    else:
+        # create_relationship_from_csv(args)
+        create_relationship_from_original(args)

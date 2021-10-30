@@ -99,6 +99,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    # create imdb_800.h5
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_dir', default='/Users/lizeng/workspace/caption/data/detection/DIOR')
     parser.add_argument('--image_size', default=800, type=int)

@@ -67,3 +67,19 @@ data/vg/proposals.h5
 data/vg/VG-SGG-dicts.json
 data/vg/VG-SGG.h5
 ```
+
+## excute order:
+```shell
+#create total_json/image_data.json total_json/objects.json and total_json/objects_id-in-img.json
+python create_json.py --crete_image_data True
+#create imdb_800.h5
+python dior_to_imdb.py
+#create original_json/*.json
+python create_relationships.py
+#create relationships.json
+python create_json.py --crete_image_data False
+#filter jsons
+python filter_json.py
+#create dior-dicts.json and dior.h5
+python dior_to_roidb.py
+```
