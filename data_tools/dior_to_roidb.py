@@ -536,6 +536,7 @@ def main(args):
     encode_objects(obj_data, label_to_idx, object_token_counter, \
                    heights, widths, img_long_sizes)
 
+    f.create_dataset('image_ids', data=img_ids)
     f.create_dataset('labels', data=encoded_label)
     for k, boxes in encoded_boxes.items():
         f.create_dataset('boxes_%i' % k, data=boxes)
